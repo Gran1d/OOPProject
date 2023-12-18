@@ -4,269 +4,114 @@
 #include <limits>
 #include "Hash_Table.h"
 #include "warehouse.h"
-//#include "Graph.h"
-//#include "BusinessEntity.h"
-//#include "Manager.h"
-
-using namespace std;
-
-struct Edge {
-    int src, dest, weight;
-};
-
-typedef pair<int, int> Pair;
-
-class Graph {
-public:
-    vector<vector<Pair>> adjList;
-
-    Graph(vector<Edge> const &edges, int n) {
-        adjList.resize(n);
-
-        for (auto &edge: edges) {
-            int src = edge.src;
-            int dest = edge.dest;
-            int weight = edge.weight;
-
-            adjList[src].push_back(make_pair(dest, weight));
-            adjList[dest].push_back(make_pair(src, weight));
-        }
-    }
-
-    vector<int> dijkstra(int start) {
-        priority_queue<Pair, vector<Pair>, greater<Pair>> pq;
-        vector<int> dist(adjList.size(), numeric_limits<int>::max());
-
-        pq.push(make_pair(0, start));
-        dist[start] = 0;
-
-        while (!pq.empty()) {
-            int u = pq.top().second;
-            pq.pop();
-
-            for (Pair &neighbor : adjList[u]) {
-                int v = neighbor.first;
-                int weight = neighbor.second;
-
-                if (dist[u] + weight < dist[v]) {
-                    dist[v] = dist[u] + weight;
-                    pq.push(make_pair(dist[v], v));
-                }
-            }
-        }
-
-        return dist;
-    }
-};
-
-struct Product {
-    string name;
-    int volume;
-};
-
-struct Order {
-    Product product;
-    int remainingVolume;
-    int initialVolume;
-};
-struct Client {
-    string name;
-    int city;
-    Order order;
-    //Можно поменять на рандом
-    int soldproduct;
-    string buyorsell;
-};
-template <typename T>
-class BusinessEntity {
-public:
-    // дефолтный пока просто первый город и пустое имя
-    BusinessEntity(){
-        name = "";
-        currentcity = 0;
-    }
-    // Задаем имя и в каком мы городе сейчас
-    BusinessEntity(const string& _name, int _currentcity){
-        name = _name;
-        currentcity = _currentcity;
-    }
-
-    string getName() const {
-        return name;
-    }
-    virtual int getCurrentcity() const {
-        return currentcity;
-    }
-
-    virtual void performAction(Client& client, Graph& graph, Warehouse& warehouse) const = 0;
-
-    virtual ~BusinessEntity() = default;
-
-protected:
-    string name;
-    int currentcity;
-};
-
-class Manager : public BusinessEntity<Manager> {
-public:
-    Manager(const string& name, int currentcity) : BusinessEntity(name, currentcity) {
-        currentcitymanager = currentcity;
-    }
-
-    void performAction(Client& client, Graph& graph, Warehouse& warehouse) const override {
-        cout << "Менеджер " << getName() << " посетил клиента " << client.name << endl;
-        // Выберем стартовую и конечную точку
-        int start = currentcitymanager;
-        int end = client.city;
-        //Алг декстра, находит кротчайший путь из нужного в конечный
-        vector<int> shortestDistances = graph.dijkstra(start);
-        // Выведем результат для конечной точки
-        cout << "Кратчайший путь от вершины " << start << " до вершины " << end << ": " << shortestDistances[end] << endl;
-        client.order.initialVolume = client.order.remainingVolume - client.soldproduct * shortestDistances[end];
-
-        double contractVolume = client.order.initialVolume;
-        if (client.order.initialVolume < 0){
-            cout << "Договор не заключен, товар закончился" << endl;
-        }else{
-            cout << "Заключен договор на объем: " << contractVolume << endl;
-        }
-        currentcitymanager = end;
-    }
-
-    //перегруженный геттер
-    int getCurrentcity() const override {
-        return currentcitymanager;
-    }
-    // Перегруженный оператор << чтобы выводить имя менеджера
-    friend ostream& operator<<(ostream& os, const Manager& manager) {
-        os << "Менеджер " << manager.getName();
-        return os;
-    }
-private:
-    mutable int currentcitymanager;
-};
-
-class Carrier : public BusinessEntity<Carrier> {
-public:
-    Carrier(const string& name, int currentcity) : BusinessEntity(name, currentcity){
-        currentcitycarrier = currentcity;
-        warehousecity = currentcity;
-    }
-    void replenishmentoftheWarehouse(Client& client,Warehouse& warehouse)const{
-        warehouse.add(client.order.product.name, client.order.initialVolume + warehouse.get(client.order.product.name));
-    }
-    void rep(Client& client,Warehouse& warehouse)const{
-        warehouse.add(client.order.product.name, warehouse.get(client.order.product.name) - client.order.initialVolume);
-    }
-    void performAction(Client& client, Graph& graph, Warehouse& warehouse) const override {
-        cout << "Перевозчик " << getName() << " доставил товар для клиента " << client.name << endl;
-        if(currentcitycarrier != warehousecity){
-            warehousecity = currentcitycarrier;
-        }
-        if(client.buyorsell == "sell"){
-            // Выберем стартовую и конечную точку
-            int start = currentcitycarrier;
-            int end = client.city;
-            //Алг декстра, находит кротчайший путь из нужного в конечный
-            vector<int> shortestDistances = graph.dijkstra(start);
-            // Выведем результат для конечной точки
-            cout << "Кратчайший путь от вершины " << start << " до вершины " << end << ": " << shortestDistances[end] << endl;
-            currentcitycarrier = end;
-            replenishmentoftheWarehouse(client, warehouse);
-        } else{
-            int start = currentcitycarrier;
-            int end = client.city;
-            //Алг декстра, находит кротчайший путь из нужного в конечный
-            vector<int> shortestDistances = graph.dijkstra(start);
-            // Выведем результат для конечной точки
-            cout << "Кратчайший путь от вершины " << start << " до вершины " << end << ": " << shortestDistances[end] << endl;
-            if(warehouse.get(client.order.product.name) < client.order.initialVolume){
-                cout << "Товар отсутствует на складе" << endl;
-                warehouse.add(client.order.product.name,warehouse.get(client.order.product.name));
-            } else{
-                rep(client,warehouse);
-            }
-            currentcitycarrier = end;
-        }
-
-
-
-    }
-
-    // Перегруженный оператор << чтобы выводить имя перевозчика
-    friend ostream& operator<<(ostream& os, const Carrier& carrier) {
-        os << "Перевозчик " << carrier.getName();
-        return os;
-    }
-private:
-    mutable int warehousecity;
-    mutable int currentcitycarrier;
-};
+#include "Graph.h"
+#include "BusinessEntity.h"
+#include "Manager.h"
+#include "Carrier.h"
 
 int main() {
+
+    //Тесты класса Hash_Table
+    HashTable<int, int> table1;
+
+    assert(table1.size_() == 0);
+    table1.insert(1, 11);
+    assert(table1.size_() == 1);
+    table1.insert(1, 4);
+    assert(table1.size_() == 1);
+    table1.remove(1);
+    assert(table1.size_() == 0);
+    table1.insert(1, 1);
+    table1.removeAll();
+
+    table1.insert(1, 1);
+    assert(table1[1] == 1);
+    table1.insert(1,5);
+    assert(table1[1] == 5);
+    cout << "Test HashTable" << endl;
+    //Тесты warehouse
+    Warehouse warehouseTest = Warehouse();
+    warehouseTest.add("Товар1", 100);
+    warehouseTest.add("Товар2", 100);
+    warehouseTest.add("Товар3", 50);
+    warehouseTest.add("Товар4", 250);
+    assert(warehouseTest.get("Товар1") == 100);
+    assert(warehouseTest.get("Товар2") == 100);
+    warehouseTest.add("Товар1",200);
+    assert(warehouseTest.get("Товар1") == 200);
+    cout << "Test warehouse" << endl;
+    //Тесты Graph
     vector<Edge> edges = {
             {0, 1, 1}, {1, 2, 8}, {2, 3, 4},
             {3, 0, 5}, {0, 4, 7}, {1, 4, 4},
             {2, 4, 2}, {3, 4, 3}
     };
-
+    //Количество вершин
     int n = 5;
     Graph graph(edges, n);
-
+    vector<int> shortestDistances = graph.dijkstra(0);
+    // Выводим граф
+    cout << graph;
+    cout << shortestDistances[4] << endl;
+    cout << shortestDistances[2] << endl;
+    assert(shortestDistances[4] == 5);
+    assert(shortestDistances[2] == 7);
+    cout << "Test Graph" << endl;
+    // Тесты Manager
+    //создадим клиентов
     vector<Client> clients = {{"Клиент1", 1, {{"Товар1", 150},
-                                              150, 150}, 20, "buy"},
-                                   {"Клиент2", 2, {{"Товар2", 120},
-                                                   120, 120}, 15, "sell"},
-                                   {"Клиент3", 3, {{"Товар3", 100},
-                                                   100, 100}, 50, "sell"}};
-
-    //склад
-    Warehouse warehouse = Warehouse();
-    warehouse.add("Товар1", 100);
-    warehouse.add("Товар2", 100);
-    warehouse.add("Товар3", 50);
-    warehouse.add("Товар4", 250);
-
+                                                     150, 150}, 20, "buy"},
+                              {"Клиент2", 2, {{"Товар2", 120},
+                                                     120, 120}, 15, "sell"},
+                              {"Клиент3", 3, {{"Товар3", 100},
+                                                     100, 100}, 50, "sell"}};
     Manager manager("Менеджер1", 0);
-//    Carrier carrier = {"Перевозчик1"};
 
-    manager.performAction(clients[0],graph, warehouse);
+    manager.performAction(clients[0],graph, warehouseTest);
     cout << manager.getCurrentcity() << endl;
-    manager.performAction(clients[1],graph, warehouse);
+    assert(manager.getCurrentcity() == 1);
+    manager.performAction(clients[1],graph, warehouseTest);
     cout << manager.getCurrentcity() << endl;
-    manager.performAction(clients[2], graph, warehouse);
+    assert(manager.getCurrentcity() == 2);
+    manager.performAction(clients[2], graph, warehouseTest);
     cout << manager.getCurrentcity() << endl;
-
-
+    assert(manager.getCurrentcity() == 3);
+    assert(manager.getName() == "Менеджер1");
+    cout << "Test Manager" << endl;
+    cout << manager << endl;
+    //Дефолтный конструктор
+    Manager man1;
+    assert(man1.getName() == "");
+    assert(man1.getCurrentcity() == 0);
+    //Конструктор копирования
+    Manager man2 = Manager(manager);
+    assert(man2.getCurrentcity() == 3);
+    assert(man2.getName() == "Менеджер1");
+    //Идентификация
+    assert(manager.identify() == "Manager");
+    // Тесты Carrier
     Carrier carrier("Перевозчик1", 0);
-    carrier.performAction(clients[0], graph, warehouse);
-    cout << warehouse.get("Товар1") << endl;
-    carrier.performAction(clients[1], graph, warehouse);
-    cout << warehouse.get("Товар2") << endl;
-
-    //Не берем 3-го потому что заказ не был заключен с менеджером
-
-    cout << manager;
-
-//    for (int day = 1; day <= 3; ++day) {
-//        std::cout << "День " << day << ":" << std::endl;
-//
-//        for (auto& client : clients) {
-//            if (client.order.remainingVolume > 0) {
-//                manager.performAction(client);
-//                carrier.performAction(client);
-//                std::cout << "Оставшийся объем у клиента " << client.name << ": " << client.order.remainingVolume << std::endl;
-//            }
-//        }
-
-//        for (auto& client : clients) {
-//            double reduction = std::rand() % 21;
-//            client.order.remainingVolume -= reduction;
-//            std::cout << "Уменьшение объема заказа у клиента " << client.name << " на " << reduction << std::endl;
-//        }
-
-//        std::cout << std::endl;
-//    }
+    carrier.performAction(clients[0], graph, warehouseTest);
+    cout << warehouseTest.get("Товар1") << endl;
+    assert(warehouseTest.get("Товар1") == 70);
+    assert(carrier.getCurrentcity() == 1);
+    carrier.performAction(clients[1], graph, warehouseTest);
+    cout << warehouseTest.get("Товар2") << endl;
+    assert(warehouseTest.get("Товар2") == 130);
+    assert(carrier.getName() == "Перевозчик1");
+    assert(carrier.getCurrentcity() == 2);
+    //Дефолтный конструктор
+    Carrier car1;
+    assert(car1.getName() == "");
+    assert(car1.getCurrentcity() == 0);
+    //Конструктор копирования
+    Carrier car2 = Carrier(carrier);
+    assert(car2.getCurrentcity() == 2);
+    assert(car2.getName() == "Перевозчик1");
+    //Идентификация
+    assert(carrier.identify() == "Carrier");
+//    Не берем 3-го потому что заказ не был заключен с менеджером
+    cout << "Pass all test" << endl;
 
     return 0;
 }

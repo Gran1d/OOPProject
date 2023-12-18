@@ -10,6 +10,7 @@ class Warehouse {
 public:
     Warehouse() = default;
     Warehouse(const Warehouse& other) = default;
+    ~Warehouse() = default;
     //Вставить
     void add(const string& name, size_t count){
         warehouse_.insert(name, count);
@@ -26,17 +27,7 @@ public:
     size_t get(string name) const{
         return warehouse_[name];
     }
-    //Задаем число и выводим количество повторений
-    int numberofrepetitions(int number){
-        vector<string> keys = warehouse_.keys();
-        int counter = 0;
-        for(string& key : keys){
-            if (warehouse_[key] >= number){
-                counter+=1;
-            }
-        }
-        return counter;
-    }
+
 
 private:
     HashTable<string, size_t> warehouse_;
