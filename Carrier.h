@@ -16,35 +16,40 @@ public:
     }
     Carrier(const Carrier &other) = default;
     void performAction(Client& client, Graph& graph, Warehouse& warehouse) const override {
-        cout << "Перевозчик " << getName() << " доставил товар для клиента " << client.name << endl;
-        if(currentcitycarrier != warehousecity){
-            warehousecity = currentcitycarrier;
-        }
-        if(client.buyorsell == "sell"){
-            // Выберем стартовую и конечную точку
-            int start = currentcitycarrier;
-            int end = client.city;
-            //Алг декстра, находит кротчайший путь из нужного в конечный
-            vector<int> shortestDistances = graph.dijkstra(start);
-            // Выведем результат для конечной точки
-            cout << "Кратчайший путь от вершины " << start << " до вершины " << end << ": " << shortestDistances[end] << endl;
-            currentcitycarrier = end;
-            replenishmentoftheWarehouse(client, warehouse);
-        } else{
-            int start = currentcitycarrier;
-            int end = client.city;
-            //Алг декстра, находит кротчайший путь из нужного в конечный
-            vector<int> shortestDistances = graph.dijkstra(start);
-            // Выведем результат для конечной точки
-            cout << "Кратчайший путь от вершины " << start << " до вершины " << end << ": " << shortestDistances[end] << endl;
-            if(warehouse.get(client.order.product.name) < client.order.initialVolume){
-                cout << "Товар отсутствует на складе" << endl;
-                warehouse.add(client.order.product.name,warehouse.get(client.order.product.name));
-            } else{
-                rep(client,warehouse);
+        if(client.contract){
+            cout << "Перевозчик " << getName() << " доставил товар для клиента " << client.name << endl;
+            if(currentcitycarrier != warehousecity){
+                warehousecity = currentcitycarrier;
             }
-            currentcitycarrier = end;
+            if(client.buyorsell == "sell"){
+                // Выберем стартовую и конечную точку
+                int start = currentcitycarrier;
+                int end = client.city;
+                //Алг декстра, находит кротчайший путь из нужного в конечный
+                vector<int> shortestDistances = graph.dijkstra(start);
+                // Выведем результат для конечной точки
+                cout << "Кратчайший путь от вершины " << start << " до вершины " << end << ": " << shortestDistances[end] << endl;
+                currentcitycarrier = end;
+                replenishmentoftheWarehouse(client, warehouse);
+            } else{
+                int start = currentcitycarrier;
+                int end = client.city;
+                //Алг декстра, находит кротчайший путь из нужного в конечный
+                vector<int> shortestDistances = graph.dijkstra(start);
+                // Выведем результат для конечной точки
+                cout << "Кратчайший путь от вершины " << start << " до вершины " << end << ": " << shortestDistances[end] << endl;
+                if(warehouse.get(client.order.product.name) < client.order.initialVolume){
+                    cout << "Товар отсутствует на складе" << endl;
+                    warehouse.add(client.order.product.name,warehouse.get(client.order.product.name));
+                } else{
+                    rep(client,warehouse);
+                }
+                currentcitycarrier = end;
+            }
+        }else{
+            cout << "Договор не был заключен, перевоздич не поехал" << endl;
         }
+
     }
     int getCurrentcity() const override {
         return currentcitycarrier;

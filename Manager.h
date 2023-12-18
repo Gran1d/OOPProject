@@ -27,10 +27,10 @@ public:
         double contractVolume = client.order.initialVolume;
         if (client.order.initialVolume < 0){
             cout << "Договор не заключен, товар закончился" << endl;
-
+            client.contract = false;
         }else{
             cout << "Заключен договор на объем: " << contractVolume << endl;
-
+            client.contract = true;
         }
         currentcitymanager = end;
     }

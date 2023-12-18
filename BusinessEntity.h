@@ -21,6 +21,7 @@ struct Client {
     //Можно поменять на рандом
     int soldproduct;
     string buyorsell;
+    bool contract = false;
 };
 template <typename T>
 class BusinessEntity {

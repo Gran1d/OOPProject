@@ -1,7 +1,6 @@
 #include <iostream>
 #include <vector>
 #include <queue>
-#include <limits>
 #include "Hash_Table.h"
 #include "warehouse.h"
 #include "Graph.h"
@@ -110,7 +109,8 @@ int main() {
     assert(car2.getName() == "Перевозчик1");
     //Идентификация
     assert(carrier.identify() == "Carrier");
-//    Не берем 3-го потому что заказ не был заключен с менеджером
+    carrier.performAction(clients[2], graph, warehouseTest);
+    cout << warehouseTest.get("Товар2") << endl;
     cout << "Pass all test" << endl;
 
     return 0;
